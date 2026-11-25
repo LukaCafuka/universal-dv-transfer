@@ -299,9 +299,12 @@ fn assert_avi_scan_metadata(path: &Path, order: FieldOrder) {
 }
 
 fn update_vaux_controls(data: &mut [u8], mut update: impl FnMut(&mut [u8])) {
-    for sequence in data.chunks_exact_mut(12000) {
+    for sequence in data.as_chunks_mut::<12_000>().0 {
         for block in 3..6 {
-            for pack in sequence[block * 80 + 3..block * 80 + 78].chunks_exact_mut(5) {
+            for pack in sequence[block * 80 + 3..block * 80 + 78]
+                .as_chunks_mut::<5>()
+                .0
+            {
                 if pack[0] == 0x61 {
                     update(pack);
                 }

@@ -86,7 +86,9 @@ fn repeated_dv_hdv_switches_keep_boundary_packets_and_finalize_avis() {
         let ntsc = dv(Standard::Ntsc);
         let ts = null_ts(17);
         let bytes: Vec<u8> = ts
-            .chunks_exact(188)
+            .as_chunks::<188>()
+            .0
+            .iter()
             .flat_map(|p| {
                 let mut v = if stride == 192 {
                     vec![0, 0, 0, 1]
@@ -141,7 +143,7 @@ fn cip_dv(archive: &mut CaptureArchive, bytes: &[u8], dbc: &mut u8) {
     }
 }
 fn cip_ts(archive: &mut CaptureArchive, bytes: &[u8], dbc: &mut u8) {
-    for payload in bytes.chunks_exact(188) {
+    for payload in bytes.as_chunks::<188>().0 {
         let mut packet = vec![3, 0, 6, 0xc4, *dbc, 0xa0, 0x80, 0, 0, 0, 0, 0, 0];
         packet.extend_from_slice(payload);
         archive.push_tagged(&packet).unwrap();

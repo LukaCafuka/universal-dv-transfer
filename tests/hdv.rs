@@ -241,18 +241,11 @@ fn hdv_m2ts_splits_and_preflight_failures() {
     // Hardware playlists add explicit clock/counter discontinuities between
     // clips. These must reset the TS analyzer without altering media packets.
     let first = hdv::inspect_file(&input).unwrap();
+    let (packets, _) = original.as_chunks::<{ hdv::PACKET }>();
     let mut joined = first.discontinuity_packets();
-    joined.extend(
-        original
-            .chunks_exact(188)
-            .map(|p| <[u8; 188]>::try_from(p).unwrap()),
-    );
+    joined.extend_from_slice(packets);
     joined.extend(first.discontinuity_packets());
-    joined.extend(
-        original
-            .chunks_exact(188)
-            .map(|p| <[u8; 188]>::try_from(p).unwrap()),
-    );
+    joined.extend_from_slice(packets);
     let mut checked = hdv::Inspector::default();
     for packet in joined {
         checked.push(&packet);
@@ -260,8 +253,7 @@ fn hdv_m2ts_splits_and_preflight_failures() {
     assert_eq!(checked.errors, 0);
     assert_eq!(checked.pictures, first.pictures * 2);
     let mut prefixed = Vec::new();
-    for packet in original.chunks_exact(188) {
-        let mut packet = <[u8; 188]>::try_from(packet).unwrap();
+    for mut packet in packets.iter().copied() {
         if packet[3] & 0x20 != 0 && packet[4] > 0 {
             packet[5] &= !0x40;
         }
@@ -321,7 +313,12 @@ fn hdv_m2ts_splits_and_preflight_failures() {
     // A changed payload continuity counter must be detected, not silently retimed.
     let mut broken = std::fs::read(input).unwrap();
     let mut changed = false;
-    for packet in broken.chunks_exact_mut(188).skip(300) {
+    for packet in broken
+        .as_chunks_mut::<{ hdv::PACKET }>()
+        .0
+        .iter_mut()
+        .skip(300)
+    {
         if ((u16::from(packet[1] & 31) << 8) | u16::from(packet[2])) == 256 && packet[3] & 0x10 != 0
         {
             packet[3] ^= 3;

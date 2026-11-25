@@ -510,8 +510,9 @@ impl Preview {
                 );
             }
             pending.extend_from_slice(bytes);
-            let complete = pending.len() / crate::hdv::BLOCK * crate::hdv::BLOCK;
-            for block in pending[..complete].chunks_exact(crate::hdv::BLOCK) {
+            let (blocks, remainder) = pending.as_chunks::<{ crate::hdv::BLOCK }>();
+            let complete = pending.len() - remainder.len();
+            for block in blocks {
                 if self.tx.try_send(block.to_vec()).is_err() {
                     // Never continue decoding across a missing compressed chunk.
                     *self.failure.lock().unwrap() =

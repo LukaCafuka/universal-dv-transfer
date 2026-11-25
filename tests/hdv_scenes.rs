@@ -55,8 +55,7 @@ fn pmt_with_aux(p: &mut [u8]) {
 fn inject(original: &[u8]) -> Vec<u8> {
     let mut output = Vec::new();
     let mut picture = 0u8;
-    for p in original.chunks_exact(PACKET) {
-        let mut p: [u8; PACKET] = p.try_into().unwrap();
+    for mut p in original.as_chunks::<PACKET>().0.iter().copied() {
         if hdv::pid(&p) == 4096 {
             pmt_with_aux(&mut p);
         }
@@ -317,8 +316,8 @@ fn scenes_preserve_all_packets_decoded_video_and_encoded_audio_with_open_gops() 
         std::fs::write(&source, &bytes).unwrap();
         let mut writer =
             hdv_capture::Writer::new(options(&dir.path().join(format!("out-{height}"))));
-        for p in bytes.chunks_exact(188) {
-            writer.push(p.try_into().unwrap()).unwrap();
+        for p in bytes.as_chunks::<PACKET>().0 {
+            writer.push(p).unwrap();
         }
         writer.finish().unwrap();
         writer.finish().unwrap();
@@ -376,8 +375,8 @@ fn scenes_preserve_all_packets_decoded_video_and_encoded_audio_with_open_gops() 
         let mut opts = options(&dir.path().join(format!("off-{height}")));
         opts.discontinuity_seconds = 0;
         let mut off = hdv_capture::Writer::new(opts);
-        for p in bytes.chunks_exact(188) {
-            off.push(p.try_into().unwrap()).unwrap();
+        for p in bytes.as_chunks::<PACKET>().0 {
+            off.push(p).unwrap();
         }
         off.finish().unwrap();
         assert_eq!(off.files.len(), 1);
@@ -444,8 +443,8 @@ fn frame_limit_splits_preserve_packets_at_all_hdv_frame_rates() {
             let mut opts = options(&dir.path().join(format!("out-{height}-{index}")));
             opts.max_frames = 3;
             let mut writer = hdv_capture::Writer::new(opts);
-            for p in original.chunks_exact(188) {
-                writer.push(p.try_into().unwrap()).unwrap();
+            for p in original.as_chunks::<PACKET>().0 {
+                writer.push(p).unwrap();
             }
             writer.finish().unwrap();
             assert!(writer.files.len() >= 2, "{height} {rate}");

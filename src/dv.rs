@@ -98,13 +98,18 @@ impl Frame {
 /// the AVI header. Missing or contradictory metadata remains unknown.
 fn field_order(data: &[u8]) -> Option<FieldOrder> {
     let mut votes = [0; 3];
-    for (seq, sequence) in data.chunks_exact(12_000).enumerate() {
+    for (seq, sequence) in data.as_chunks::<12_000>().0.iter().enumerate() {
         for block in 0..3 {
             let dif = &sequence[(3 + block) * 80..(4 + block) * 80];
             if dif[0] & 0xe0 != 0x40 || dif[1] >> 4 != seq as u8 || dif[2] != block as u8 {
                 continue;
             }
-            for pack in dif[3..78].chunks_exact(5).filter(|p| p[0] == 0x61) {
+            for pack in dif[3..78]
+                .as_chunks::<5>()
+                .0
+                .iter()
+                .filter(|p| p[0] == 0x61)
+            {
                 let index = if pack[3] & 0x10 == 0 {
                     0
                 } else if pack[3] & 0x40 != 0 {

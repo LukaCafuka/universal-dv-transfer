@@ -122,7 +122,7 @@ impl Decoder {
                             ));
                         }
                         self.dbc = Some(bytes[3].wrapping_add((payload.len() / 480) as u8));
-                        for block in payload.chunks_exact(480) {
+                        for block in payload.as_chunks::<480>().0 {
                             let first =
                                 block[0] & 0xe0 == 0 && block[1] & 0xf0 == 0 && block[2] == 0;
                             if first && !self.dv.is_empty() {
@@ -161,7 +161,7 @@ impl Decoder {
                         // Each IEC 61883-4 source packet is a 4-byte SPH + 188 TS bytes.
                         // TS continuity is checked by the inspector, including per-PID gaps.
                         let mut ts = Vec::with_capacity(payload.len() / 192 * 188);
-                        for packet in payload.chunks_exact(192) {
+                        for packet in payload.as_chunks::<192>().0 {
                             if packet[4] != 0x47 {
                                 self.flush(&mut out);
                                 out.push(Item::Partial(
@@ -460,8 +460,7 @@ impl CaptureArchive {
                     writer.request_split();
                     self.split = false;
                 }
-                for packet in bytes.chunks_exact(hdv::PACKET) {
-                    let packet: &[u8; 188] = packet.try_into().unwrap();
+                for packet in bytes.as_chunks::<{ hdv::PACKET }>().0 {
                     let before = writer.inspector.pictures;
                     let seconds = writer.inspector.seconds;
                     let errors = writer.inspector.errors;
@@ -853,8 +852,8 @@ pub fn monitor(
                                 }
                                 Item::Hdv(bytes) => {
                                     let before = info.pictures;
-                                    for p in bytes.chunks_exact(188) {
-                                        info.push(p.try_into().unwrap());
+                                    for packet in bytes.as_chunks::<{ hdv::PACKET }>().0 {
+                                        info.push(packet);
                                     }
                                     s.received += info.pictures - before;
                                     s.hdv = info.video.clone();

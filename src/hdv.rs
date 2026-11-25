@@ -491,7 +491,7 @@ impl Inspector {
                 if s.len() < 12 || s[0] != 0 || s[5] & 1 == 0 {
                     continue;
                 }
-                for entry in s[8..s.len() - 4].chunks_exact(4) {
+                for entry in s[8..s.len() - 4].as_chunks::<4>().0 {
                     if entry[0] != 0 || entry[1] != 0 {
                         self.pmt_pid = Some((u16::from(entry[2] & 31) << 8) | u16::from(entry[3]));
                         break;
@@ -749,7 +749,9 @@ mod tests {
         let hex = "02b02e0064c10000e134f00d050b54534856ff1080ffffffff02e810f00003e814f000a0e815f000a1e811f0004c856be8";
         let section: Vec<_> = hex
             .as_bytes()
-            .chunks_exact(2)
+            .as_chunks::<2>()
+            .0
+            .iter()
             .map(|b| u8::from_str_radix(std::str::from_utf8(b).unwrap(), 16).unwrap())
             .collect();
         assert_eq!(crc32(&section), 0);
