@@ -1,0 +1,46 @@
+name: Build and test
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libraw1394-dev libiec61883-dev libavc1394-dev ffmpeg libx11-dev libxi-dev libxkbcommon-dev libwayland-dev libgl1-mesa-dev
+      - name: Windows FFmpeg
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg --no-progress -y
+      - name: macOS FFmpeg
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Prefer a macOS 15 SDK for FireWire compilation
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          xcode=$(find /Applications -maxdepth 1 -name 'Xcode_16*.app' | sort | tail -1)
+          if [ -n "$xcode" ]; then
+            echo "DEVELOPER_DIR=$xcode/Contents/Developer" >> "$GITHUB_ENV"
+          fi
+      - run: cargo fmt --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked -- --include-ignored
+      - run: cargo build --locked --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: universal-dv-transfer-${{ runner.os }}
+          path: |
+            target/release/universal-dv-transfer
+            target/release/universal-dv-transfer.exe
+          if-no-files-found: error
